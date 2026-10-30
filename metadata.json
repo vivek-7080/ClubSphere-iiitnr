@@ -1,0 +1,6 @@
+{
+  "name": "ClubSphere — IIIT Naya Raipur",
+  "description": "Centralized student community platform showcasing technical, cultural, sports, and entrepreneurship clubs, live events, recruitments, and announcements at IIIT Naya Raipur.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

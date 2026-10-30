@@ -1,0 +1,110 @@
+{
+  "entities": {
+    "Club": {
+      "title": "Club",
+      "description": "Student society at IIIT Naya Raipur",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "acronym": { "type": "string" },
+        "category": { "type": "string" },
+        "categoryLabel": { "type": "string" },
+        "tagline": { "type": "string" },
+        "description": { "type": "string" },
+        "membersCount": { "type": "number" },
+        "meetingVenue": { "type": "string" },
+        "recruitmentStatus": { "type": "string" },
+        "recruitmentTarget": { "type": "string" },
+        "accentColor": { "type": "string" },
+        "leads": { "type": "array" },
+        "flagshipEvents": { "type": "array" },
+        "skillsGained": { "type": "array" },
+        "activeProjects": { "type": "array" },
+        "socialLinks": { "type": "object" }
+      },
+      "required": ["id", "name", "acronym", "category", "tagline", "description"]
+    },
+    "ClubApplication": {
+      "title": "ClubApplication",
+      "description": "Student candidate application for society induction",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "applicantName": { "type": "string" },
+        "rollNumber": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "branch": { "type": "string" },
+        "year": { "type": "string" },
+        "clubId": { "type": "string" },
+        "clubName": { "type": "string" },
+        "subDomain": { "type": "string" },
+        "statementOfPurpose": { "type": "string" },
+        "experienceOrAchievements": { "type": "string" },
+        "videoUrl": { "type": "string" },
+        "portfolioUrl": { "type": "string" },
+        "submittedAt": { "type": "string" },
+        "status": { "type": "string" },
+        "slotTime": { "type": "string" }
+      },
+      "required": ["id", "applicantName", "rollNumber", "email", "clubId", "clubName", "subDomain", "statementOfPurpose", "status"]
+    },
+    "ClubMember": {
+      "title": "ClubMember",
+      "description": "Roster member of a student club",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "clubId": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "rollNumber": { "type": "string" },
+        "branch": { "type": "string" },
+        "batch": { "type": "string" },
+        "role": { "type": "string" },
+        "subDomain": { "type": "string" },
+        "isAdmin": { "type": "boolean" },
+        "joinedAt": { "type": "string" },
+        "status": { "type": "string" }
+      },
+      "required": ["id", "clubId", "name", "email", "rollNumber", "role", "status"]
+    },
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Registered user account profile",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "rollNumber": { "type": "string" },
+        "branch": { "type": "string" },
+        "batch": { "type": "string" },
+        "role": { "type": "string" },
+        "isAdmin": { "type": "boolean" },
+        "avatarColor": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "name", "email", "role"]
+    }
+  },
+  "firestore": {
+    "/clubs/{clubId}": {
+      "schema": { "$ref": "#/entities/Club" },
+      "description": "Registered student societies directory"
+    },
+    "/applications/{applicationId}": {
+      "schema": { "$ref": "#/entities/ClubApplication" },
+      "description": "Student recruitment application dossiers"
+    },
+    "/members/{memberId}": {
+      "schema": { "$ref": "#/entities/ClubMember" },
+      "description": "Active club member roster and executive roles"
+    },
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "User profiles and administrator permissions"
+    }
+  }
+}
