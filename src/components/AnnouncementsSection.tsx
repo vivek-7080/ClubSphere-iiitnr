@@ -1,17 +1,23 @@
 import React, { useState } from 'react';
 import { Announcement } from '../types';
-import { Bell, ArrowRight, ShieldAlert, X } from 'lucide-react';
+import { Bell, ArrowRight, ShieldAlert, X, Plus, Trash2, Megaphone } from 'lucide-react';
 
 interface AnnouncementsSectionProps {
   announcements: Announcement[];
   onOpenRecruitment: () => void;
   onOpenEvents: () => void;
+  isAdmin?: boolean;
+  onOpenPostNotice?: () => void;
+  onDeleteAnnouncement?: (id: string) => void;
 }
 
 export const AnnouncementsSection: React.FC<AnnouncementsSectionProps> = ({
   announcements,
   onOpenRecruitment,
   onOpenEvents,
+  isAdmin = false,
+  onOpenPostNotice,
+  onDeleteAnnouncement,
 }) => {
   const [activeFilter, setActiveFilter] = useState<string>('all');
   const [selectedAnnouncement, setSelectedAnnouncement] = useState<Announcement | null>(null);
@@ -26,32 +32,45 @@ export const AnnouncementsSection: React.FC<AnnouncementsSectionProps> = ({
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-800 pb-6">
         <div>
-          <div className="text-xs font-semibold uppercase tracking-wider text-amber-400">
-            Student Activity Center (SAC)
+          <div className="text-xs font-semibold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+            <Megaphone className="h-3.5 w-3.5" />
+            <span>Student Activity Center (SAC) Notice Board</span>
           </div>
           <h2 className="text-2xl sm:text-3xl font-extrabold text-white mt-1">
-            Official Notices & Bulletins
+            Official Notices & Event Bulletins
           </h2>
           <p className="text-sm text-slate-400 mt-1 max-w-2xl">
-            Live circulars, recruitment timelines, audition venues, and student grant approvals verified by the Institute SAC Council.
+            Live event schedule updates, circulars, recruitment timelines, audition venues, and official society announcements verified by the SAC Council.
           </p>
         </div>
 
-        {/* Filter Tabs */}
-        <div className="flex items-center gap-1.5 overflow-x-auto bg-slate-900 border border-slate-800 p-1 rounded-lg">
-          {['all', 'Recruitment', 'Event', 'Grant'].map((cat) => (
+        <div className="flex flex-wrap items-center gap-3 self-start md:self-auto">
+          {isAdmin && onOpenPostNotice && (
             <button
-              key={cat}
-              onClick={() => setActiveFilter(cat)}
-              className={`px-3 py-1 text-xs font-medium rounded-md capitalize transition-colors whitespace-nowrap ${
-                activeFilter === cat
-                  ? 'bg-amber-400 text-slate-950 font-semibold shadow-sm'
-                  : 'text-slate-400 hover:text-white'
-              }`}
+              onClick={onOpenPostNotice}
+              className="btn-tactile px-4 py-2 text-xs font-bold text-slate-950 bg-amber-400 hover:bg-amber-300 rounded-lg transition-all shadow-md flex items-center gap-1.5 whitespace-nowrap"
             >
-              {cat === 'all' ? 'All Bulletins' : cat}
+              <Plus className="h-4 w-4 stroke-[3]" />
+              <span>Post Event Update / Notice</span>
             </button>
-          ))}
+          )}
+
+          {/* Filter Tabs */}
+          <div className="flex items-center gap-1.5 overflow-x-auto bg-slate-900 border border-slate-800 p-1 rounded-lg">
+            {['all', 'Event', 'Recruitment', 'Results', 'Grant', 'Policy'].map((cat) => (
+              <button
+                key={cat}
+                onClick={() => setActiveFilter(cat)}
+                className={`px-3 py-1 text-xs font-medium rounded-md capitalize transition-colors whitespace-nowrap ${
+                  activeFilter === cat
+                    ? 'bg-amber-400 text-slate-950 font-semibold shadow-sm'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                {cat === 'all' ? 'All Bulletins' : cat}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -92,7 +111,7 @@ export const AnnouncementsSection: React.FC<AnnouncementsSectionProps> = ({
                 </p>
               </div>
 
-              <div className="sm:self-center shrink-0">
+              <div className="sm:self-center shrink-0 flex items-center gap-3">
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -103,6 +122,21 @@ export const AnnouncementsSection: React.FC<AnnouncementsSectionProps> = ({
                   <span>Read Notice</span>
                   <ArrowRight className="h-3.5 w-3.5" />
                 </button>
+
+                {isAdmin && onDeleteAnnouncement && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (window.confirm(`Archive notice: "${ann.title}"?`)) {
+                        onDeleteAnnouncement(ann.id);
+                      }
+                    }}
+                    className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-slate-800 rounded-lg transition-colors"
+                    title="Delete / Archive notice"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                )}
               </div>
             </div>
           </div>

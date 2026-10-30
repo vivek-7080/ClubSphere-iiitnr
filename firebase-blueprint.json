@@ -87,6 +87,24 @@
         "createdAt": { "type": "string" }
       },
       "required": ["id", "name", "email", "role"]
+    },
+    "Announcement": {
+      "title": "Announcement",
+      "description": "Notice board circular or event bulletin",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "source": { "type": "string" },
+        "sourceType": { "type": "string" },
+        "date": { "type": "string" },
+        "isUrgent": { "type": "boolean" },
+        "summary": { "type": "string" },
+        "fullContent": { "type": "string" },
+        "actionUrlText": { "type": "string" },
+        "category": { "type": "string" }
+      },
+      "required": ["id", "title", "source", "date", "summary", "fullContent", "category"]
     }
   },
   "firestore": {
@@ -105,6 +123,10 @@
     "/users/{userId}": {
       "schema": { "$ref": "#/entities/UserProfile" },
       "description": "User profiles and administrator permissions"
+    },
+    "/announcements/{announcementId}": {
+      "schema": { "$ref": "#/entities/Announcement" },
+      "description": "Campus notice board circulars and event announcements"
     }
   }
 }

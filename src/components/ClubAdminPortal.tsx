@@ -23,6 +23,7 @@ import {
   Filter,
   LogOut,
   Lock,
+  Bell,
 } from 'lucide-react';
 
 interface ClubAdminPortalProps {
@@ -42,6 +43,7 @@ interface ClubAdminPortalProps {
   onRemoveClub?: (club: Club) => void;
   onSwitchClub?: (clubId: string) => void;
   onOpenAllApplicants?: () => void;
+  onOpenPostNotice?: () => void;
 }
 
 const COMMON_ROLES = [
@@ -74,6 +76,7 @@ export const ClubAdminPortal: React.FC<ClubAdminPortalProps> = ({
   onRemoveClub,
   onSwitchClub,
   onOpenAllApplicants,
+  onOpenPostNotice,
 }) => {
   const currentClub = useMemo(() => {
     return clubs.find((c) => c.id === activeClubId) || clubs[0];
@@ -488,6 +491,18 @@ export const ClubAdminPortal: React.FC<ClubAdminPortalProps> = ({
               <ExternalLink className="h-3.5 w-3.5" />
               <span className="hidden md:inline">Full Applicants Review Page</span>
               <span className="md:hidden">All Applicants</span>
+            </button>
+          )}
+
+          {onOpenPostNotice && (
+            <button
+              type="button"
+              onClick={onOpenPostNotice}
+              className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg transition-colors"
+              title="Broadcast notice regarding club events to campus notice board"
+            >
+              <Bell className="h-3.5 w-3.5 text-amber-400" />
+              <span>Broadcast Notice</span>
             </button>
           )}
         </div>

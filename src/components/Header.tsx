@@ -31,6 +31,9 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenAuth,
   onLogoutUser,
 }) => {
+  const isStudentUser = Boolean(currentUser && !currentUser.isAdmin && !adminSession);
+  const showAdminOption = !isStudentUser;
+
   return (
     <header className="sticky top-0 z-40 w-full border-b border-slate-800 bg-slate-950/90 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-8 px-4 sm:px-6 lg:px-8">
@@ -106,23 +109,25 @@ export const Header: React.FC<HeaderProps> = ({
           >
             Campus Venues
           </button>
-          <button
-            onClick={() => setActiveTab('admin')}
-            className={`whitespace-nowrap shrink-0 transition-colors py-1 flex items-center gap-1.5 ${
-              activeTab === 'admin'
-                ? 'text-amber-400 font-semibold border-b-2 border-amber-400'
-                : 'hover:text-white'
-            }`}
-          >
-            <ShieldCheck className="h-3.5 w-3.5 text-amber-400" />
-            <span>Club Admin</span>
-            {adminSession && (
-              <span className="flex h-2 w-2 relative" title={`Logged in: ${adminSession.adminName}`}>
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-              </span>
-            )}
-          </button>
+          {showAdminOption && (
+            <button
+              onClick={() => setActiveTab('admin')}
+              className={`whitespace-nowrap shrink-0 transition-colors py-1 flex items-center gap-1.5 ${
+                activeTab === 'admin'
+                  ? 'text-amber-400 font-semibold border-b-2 border-amber-400'
+                  : 'hover:text-white'
+              }`}
+            >
+              <ShieldCheck className="h-3.5 w-3.5 text-amber-400" />
+              <span>Club Admin</span>
+              {adminSession && (
+                <span className="flex h-2 w-2 relative" title={`Logged in: ${adminSession.adminName}`}>
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
+              )}
+            </button>
+          )}
           {(currentUser?.isAdmin || adminSession) && (
             <button
               onClick={() => setActiveTab('applicants')}
@@ -258,16 +263,18 @@ export const Header: React.FC<HeaderProps> = ({
         >
           Venues
         </button>
-        <button
-          onClick={() => setActiveTab('admin')}
-          className={`whitespace-nowrap shrink-0 flex items-center gap-1.5 ${activeTab === 'admin' ? 'text-amber-400 font-semibold' : ''}`}
-        >
-          <ShieldCheck className="h-3 w-3 text-amber-400" />
-          <span>Admin</span>
-          {currentUser?.isAdmin && (
-            <span className="h-1.5 w-1.5 rounded-full bg-amber-400 inline-block" />
-          )}
-        </button>
+        {showAdminOption && (
+          <button
+            onClick={() => setActiveTab('admin')}
+            className={`whitespace-nowrap shrink-0 flex items-center gap-1.5 ${activeTab === 'admin' ? 'text-amber-400 font-semibold' : ''}`}
+          >
+            <ShieldCheck className="h-3 w-3 text-amber-400" />
+            <span>Admin</span>
+            {currentUser?.isAdmin && (
+              <span className="h-1.5 w-1.5 rounded-full bg-amber-400 inline-block" />
+            )}
+          </button>
+        )}
         {(currentUser?.isAdmin || adminSession) && (
           <button
             onClick={() => setActiveTab('applicants')}

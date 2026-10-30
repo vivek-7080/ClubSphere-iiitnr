@@ -8,7 +8,7 @@ import { CLUBS_DATA } from './data/clubsData';
 import { EVENTS_DATA } from './data/eventsData';
 import { ANNOUNCEMENTS_DATA } from './data/announcementsData';
 import { VENUES_DATA } from './data/venuesData';
-import { Club, CampusEvent, ClubApplication, EventRegistration, ClubMember, AdminSession, AppUser, SUPER_ADMIN_EMAIL } from './types';
+import { Club, CampusEvent, ClubApplication, EventRegistration, ClubMember, AdminSession, AppUser, SUPER_ADMIN_EMAIL, Announcement } from './types';
 import { INITIAL_CLUB_MEMBERS } from './data/membersData';
 import { Lock, X, ArrowRight, ShieldAlert, Plus, Trash2, ShieldCheck, Sparkles, AlertCircle, Building2 } from 'lucide-react';
 
@@ -19,6 +19,7 @@ import { ClubModal } from './components/ClubModal';
 import { EventsSection } from './components/EventsSection';
 import { EventRegistrationModal } from './components/EventRegistrationModal';
 import { AnnouncementsSection } from './components/AnnouncementsSection';
+import { AddAnnouncementModal } from './components/AddAnnouncementModal';
 import { ClubMatcherQuiz } from './components/ClubMatcherQuiz';
 import { RecruitmentPortalModal } from './components/RecruitmentPortalModal';
 import { CampusVenuesSection } from './components/CampusVenuesSection';
@@ -42,6 +43,9 @@ import {
   syncMemberToCloud,
   deleteMemberFromCloud,
   subscribeToMembers,
+  syncAnnouncementToCloud,
+  deleteAnnouncementFromCloud,
+  subscribeToAnnouncements,
   seedInitialFirestoreData,
 } from './services/firebase';
 
@@ -52,11 +56,22 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
-  // Dynamic Clubs State (Initialized from localStorage or CLUBS_DATA)
+  // Dynamic Clubs State (Guarantees all 12 official societies + any user chartered societies)
   const [clubs, setClubs] = useState<Club[]>(() => {
     try {
       const stored = localStorage.getItem('clubsphere_clubs_list');
-      return stored ? JSON.parse(stored) : CLUBS_DATA;
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length >= CLUBS_DATA.length) {
+          return parsed;
+        }
+        if (Array.isArray(parsed)) {
+          const storedIds = new Set(parsed.map((c: Club) => c.id));
+          const missing = CLUBS_DATA.filter((c) => !storedIds.has(c.id));
+          return [...parsed, ...missing];
+        }
+      }
+      return CLUBS_DATA;
     } catch {
       return CLUBS_DATA;
     }
@@ -86,6 +101,7 @@ export default function App() {
   const [isBookmarksOpen, setIsBookmarksOpen] = useState<boolean>(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
   const [isAddClubModalOpen, setIsAddClubModalOpen] = useState<boolean>(false);
+  const [isAddAnnouncementModalOpen, setIsAddAnnouncementModalOpen] = useState<boolean>(false);
   const [clubToDelete, setClubToDelete] = useState<Club | null>(null);
   const [adminActiveClubId, setAdminActiveClubId] = useState<string>(() => clubs[0]?.id || 'tsoc');
 
@@ -149,6 +165,20 @@ export default function App() {
     }
   });
 
+  // Dynamic Announcements / Notice Board State
+  const [announcements, setAnnouncements] = useState<Announcement[]>(() => {
+    try {
+      const stored = localStorage.getItem('clubsphere_announcements');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+      return ANNOUNCEMENTS_DATA;
+    } catch {
+      return ANNOUNCEMENTS_DATA;
+    }
+  });
+
   const [adminSession, setAdminSession] = useState<AdminSession | null>(() => {
     try {
       const stored = localStorage.getItem('clubsphere_admin_session');
@@ -183,8 +213,8 @@ export default function App() {
   }, [registeredEvents]);
 
   useEffect(() => {
-    localStorage.setItem('clubsphere_registered_events', JSON.stringify(registeredEvents));
-  }, [registeredEvents]);
+    localStorage.setItem('clubsphere_announcements', JSON.stringify(announcements));
+  }, [announcements]);
 
   useEffect(() => {
     localStorage.setItem('clubsphere_club_members', JSON.stringify(clubMembers));
@@ -204,7 +234,7 @@ export default function App() {
 
   // Real-time Cloud Synchronization (Firebase Firestore)
   useEffect(() => {
-    seedInitialFirestoreData(clubs, submittedApplications, clubMembers);
+    seedInitialFirestoreData(clubs, submittedApplications, clubMembers, announcements);
 
     const unsubClubs = subscribeToClubs((remoteClubs) => {
       if (remoteClubs && remoteClubs.length > 0) {
@@ -224,12 +254,28 @@ export default function App() {
       }
     });
 
+    const unsubAnnouncements = subscribeToAnnouncements((remoteAnns) => {
+      if (remoteAnns && remoteAnns.length > 0) {
+        setAnnouncements(remoteAnns);
+      }
+    });
+
     return () => {
       unsubClubs();
       unsubApps();
       unsubMembers();
+      unsubAnnouncements();
     };
   }, []);
+
+  // Guard admin tabs: If a student is logged in, redirect away from admin tabs to explore
+  useEffect(() => {
+    if (currentUser && !isSuperAdmin && !adminSession) {
+      if (activeTab === 'admin' || activeTab === 'applicants') {
+        setActiveTab('explore');
+      }
+    }
+  }, [currentUser, isSuperAdmin, adminSession, activeTab]);
 
   // Handlers for Saving / Bookmarks
   const toggleSaveClub = (clubId: string) => {
@@ -334,6 +380,11 @@ export default function App() {
       });
       showToast(`Welcome ${user.name}! Super Admin privileges active.`);
     } else {
+      setAdminSession(null);
+      localStorage.removeItem('clubsphere_admin_session');
+      if (activeTab === 'admin' || activeTab === 'applicants') {
+        setActiveTab('explore');
+      }
       showToast(`Welcome, ${user.name}!`);
     }
   };
@@ -510,6 +561,20 @@ export default function App() {
       showToast(`Added ${additions.length} candidate applications (including Rahul Kumar)!`);
       return [...additions, ...prev];
     });
+  };
+
+  // Notice Board Announcements Handlers
+  const handleAddAnnouncement = (newAnn: Announcement) => {
+    setAnnouncements((prev) => [newAnn, ...prev]);
+    syncAnnouncementToCloud(newAnn);
+    showToast(`Notice broadcasted: "${newAnn.title}"`);
+  };
+
+  const handleDeleteAnnouncement = (annId: string) => {
+    const target = announcements.find((a) => a.id === annId);
+    setAnnouncements((prev) => prev.filter((a) => a.id !== annId));
+    deleteAnnouncementFromCloud(annId);
+    showToast(`Notice removed: "${target ? target.title : 'Circular'}"`);
   };
 
   // Filtered Clubs Calculation
@@ -695,13 +760,39 @@ export default function App() {
                         setSearchQuery('');
                         setSelectedCategory('all');
                       }}
-                      className="btn-tactile text-xs text-amber-400 hover:text-amber-300 font-semibold bg-slate-900 border border-slate-800 px-3 py-2 rounded-xl transition-colors"
+                      className="btn-tactile text-xs text-slate-950 font-bold bg-amber-400 hover:bg-amber-300 px-3.5 py-2 rounded-xl transition-colors shadow-sm flex items-center gap-1.5"
                     >
-                      Reset Filters
+                      <span>Show All {clubs.length} Societies</span>
                     </button>
                   )}
                 </div>
               </div>
+
+              {(searchQuery || selectedCategory !== 'all') && (
+                <div className="mt-4 p-3 rounded-xl bg-slate-900 border border-slate-800 text-xs text-slate-300 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-amber-400 animate-pulse" />
+                    <span>
+                      {searchQuery && selectedCategory !== 'all' ? (
+                        <>Filtered by category <strong>"{selectedCategory}"</strong> and search <strong>"{searchQuery}"</strong></>
+                      ) : searchQuery ? (
+                        <>Filtered by search query: <strong>"{searchQuery}"</strong></>
+                      ) : (
+                        <>Category filter active: <strong>"{selectedCategory}"</strong> (Showing {filteredClubs.length} of {clubs.length} total societies)</>
+                      )}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setSearchQuery('');
+                      setSelectedCategory('all');
+                    }}
+                    className="text-amber-400 hover:text-amber-300 hover:underline font-semibold whitespace-nowrap"
+                  >
+                    Clear Filter
+                  </button>
+                </div>
+              )}
 
               {/* Grid */}
               <div className="mt-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -713,7 +804,7 @@ export default function App() {
                     onToggleSave={toggleSaveClub}
                     onSelectClub={(c) => setSelectedClubForModal(c)}
                     onApplyClub={(c) => handleOpenApplicationModal(c)}
-                    onOpenAdmin={handleOpenClubAdmin}
+                    onOpenAdmin={isSuperAdmin || !!adminSession ? handleOpenClubAdmin : undefined}
                     isAdmin={isSuperAdmin}
                     onRemoveClub={(c) => setClubToDelete(c)}
                   />
@@ -753,9 +844,12 @@ export default function App() {
         {activeTab === 'announcements' && (
           <div key="tab-announcements" className="animate-fade-in">
             <AnnouncementsSection
-              announcements={ANNOUNCEMENTS_DATA}
+              announcements={announcements}
               onOpenRecruitment={() => handleOpenApplicationModal()}
               onOpenEvents={() => setActiveTab('events')}
+              isAdmin={isSuperAdmin || !!adminSession}
+              onOpenPostNotice={() => setIsAddAnnouncementModalOpen(true)}
+              onDeleteAnnouncement={handleDeleteAnnouncement}
             />
           </div>
         )}
@@ -850,6 +944,7 @@ export default function App() {
                   setActiveTab('applicants');
                   window.scrollTo({ top: 0, behavior: 'smooth' });
                 }}
+                onOpenPostNotice={() => setIsAddAnnouncementModalOpen(true)}
               />
             ) : adminSession ? (
               /* Per-Club Session Active */
@@ -868,6 +963,7 @@ export default function App() {
                   setActiveTab('applicants');
                   window.scrollTo({ top: 0, behavior: 'smooth' });
                 }}
+                onOpenPostNotice={() => setIsAddAnnouncementModalOpen(true)}
               />
             ) : (
               /* Login Page */
@@ -951,7 +1047,7 @@ export default function App() {
           setSelectedClubForModal(null);
           handleOpenApplicationModal(club);
         }}
-        onOpenAdmin={handleOpenClubAdmin}
+        onOpenAdmin={isSuperAdmin || !!adminSession ? handleOpenClubAdmin : undefined}
         isAdmin={isSuperAdmin}
         onRemoveClub={(c) => setClubToDelete(c)}
       />
@@ -989,6 +1085,18 @@ export default function App() {
         isOpen={isAddClubModalOpen}
         onClose={() => setIsAddClubModalOpen(false)}
         onAddClub={handleAddClub}
+      />
+
+      {/* Broadcast Notice / Announcement Modal */}
+      <AddAnnouncementModal
+        isOpen={isAddAnnouncementModalOpen}
+        onClose={() => setIsAddAnnouncementModalOpen(false)}
+        clubs={clubs}
+        adminSession={adminSession}
+        currentUser={currentUser}
+        isSuperAdmin={isSuperAdmin}
+        onAddAnnouncement={handleAddAnnouncement}
+        preSelectedClubId={adminActiveClubId}
       />
 
       {/* Delete Club Confirmation Modal */}

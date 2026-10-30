@@ -13,7 +13,9 @@ import {
 } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 import firebaseConfig from '../../firebase-applet-config.json';
-import { Club, ClubApplication, ClubMember, AppUser } from '../types';
+import { Club, ClubApplication, ClubMember, AppUser, Announcement } from '../types';
+import { CLUBS_DATA } from '../data/clubsData';
+import { ANNOUNCEMENTS_DATA } from '../data/announcementsData';
 
 // Initialize Firebase App
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
@@ -46,6 +48,7 @@ const CLUBS_COLLECTION = 'clubs';
 const APPLICATIONS_COLLECTION = 'applications';
 const MEMBERS_COLLECTION = 'members';
 const USERS_COLLECTION = 'users';
+const ANNOUNCEMENTS_COLLECTION = 'announcements';
 
 // --- CLUBS ---
 export async function syncClubToCloud(club: Club): Promise<void> {
@@ -71,11 +74,17 @@ export function subscribeToClubs(onUpdate: (clubs: Club[]) => void) {
     (snapshot) => {
       if (!snapshot.empty) {
         const remoteClubs = snapshot.docs.map((d) => d.data() as Club);
-        onUpdate(remoteClubs);
+        const remoteIds = new Set(remoteClubs.map((c) => c.id));
+        // Retain any standard campus societies if remote currently has only a subset
+        const missing = CLUBS_DATA.filter((c) => !remoteIds.has(c.id));
+        onUpdate([...remoteClubs, ...missing]);
+      } else {
+        onUpdate(CLUBS_DATA);
       }
     },
     (err) => {
       console.warn('[Firebase] Clubs subscription error:', err);
+      onUpdate(CLUBS_DATA);
     }
   );
 }
@@ -146,18 +155,59 @@ export function subscribeToMembers(onUpdate: (members: ClubMember[]) => void) {
   );
 }
 
+// --- ANNOUNCEMENTS & NOTICE BOARD ---
+export async function syncAnnouncementToCloud(ann: Announcement): Promise<void> {
+  try {
+    await setDoc(doc(db, ANNOUNCEMENTS_COLLECTION, ann.id), ann, { merge: true });
+  } catch (e) {
+    console.error(`[Firebase] Failed to sync announcement ${ann.id}:`, e);
+  }
+}
+
+export async function deleteAnnouncementFromCloud(annId: string): Promise<void> {
+  try {
+    await deleteDoc(doc(db, ANNOUNCEMENTS_COLLECTION, annId));
+  } catch (e) {
+    console.error(`[Firebase] Failed to delete announcement ${annId}:`, e);
+  }
+}
+
+export function subscribeToAnnouncements(onUpdate: (anns: Announcement[]) => void) {
+  const colRef = collection(db, ANNOUNCEMENTS_COLLECTION);
+  return onSnapshot(
+    colRef,
+    (snapshot) => {
+      if (!snapshot.empty) {
+        const remoteAnns = snapshot.docs.map((d) => d.data() as Announcement);
+        const remoteIds = new Set(remoteAnns.map((a) => a.id));
+        const missing = ANNOUNCEMENTS_DATA.filter((a) => !remoteIds.has(a.id));
+        onUpdate([...remoteAnns, ...missing]);
+      } else {
+        onUpdate(ANNOUNCEMENTS_DATA);
+      }
+    },
+    (err) => {
+      console.warn('[Firebase] Announcements subscription error:', err);
+      onUpdate(ANNOUNCEMENTS_DATA);
+    }
+  );
+}
+
 // --- INITIAL SEEDING HELPER ---
 // If the remote Firestore collections are completely fresh, seed them with campus data
 export async function seedInitialFirestoreData(
   initialClubs: Club[],
   initialApplications: ClubApplication[],
-  initialMembers: ClubMember[]
+  initialMembers: ClubMember[],
+  initialAnnouncements?: Announcement[]
 ) {
   try {
     const clubsSnap = await getDocs(collection(db, CLUBS_COLLECTION));
-    if (clubsSnap.empty) {
-      console.log('[Firebase] Seeding initial clubs to remote Firestore...');
-      for (const club of initialClubs) {
+    const existingIds = new Set(clubsSnap.docs.map((d) => d.id));
+    const allClubs = initialClubs && initialClubs.length >= CLUBS_DATA.length ? initialClubs : CLUBS_DATA;
+
+    for (const club of allClubs) {
+      if (!existingIds.has(club.id)) {
         await setDoc(doc(db, CLUBS_COLLECTION, club.id), club);
       }
     }
@@ -175,6 +225,15 @@ export async function seedInitialFirestoreData(
       console.log('[Firebase] Seeding initial members roster to remote Firestore...');
       for (const member of initialMembers) {
         await setDoc(doc(db, MEMBERS_COLLECTION, member.id), member);
+      }
+    }
+
+    const annSnap = await getDocs(collection(db, ANNOUNCEMENTS_COLLECTION));
+    if (annSnap.empty) {
+      console.log('[Firebase] Seeding initial notice board announcements to remote Firestore...');
+      const anns = initialAnnouncements || ANNOUNCEMENTS_DATA;
+      for (const ann of anns) {
+        await setDoc(doc(db, ANNOUNCEMENTS_COLLECTION, ann.id), ann);
       }
     }
   } catch (e) {

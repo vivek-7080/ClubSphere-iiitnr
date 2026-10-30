@@ -2,46 +2,39 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper functions
-    function isAuthenticated() {
-      return request.auth != null;
-    }
-
-    function isSuperAdmin() {
-      return isAuthenticated() && (
-        request.auth.token.email.lower() == 'kumarvivek802125@gmail.com' ||
-        (request.auth.token.email != null && request.auth.token.email.lower() == 'kumarvivek802125@gmail.com')
-      );
-    }
-
-    // Societies collection
+    // Societies collection - open read and cloud sync for campus directory
     match /clubs/{clubId} {
-      allow read: if true;
-      allow write: if isSuperAdmin() || isAuthenticated();
+      allow read, write: if true;
     }
 
     // Candidate Recruitment Applications
     match /applications/{applicationId} {
-      allow read: if true;
-      allow create: if true;
-      allow update, delete: if isSuperAdmin() || isAuthenticated();
+      allow read, write: if true;
     }
 
     // Member Rosters
     match /members/{memberId} {
-      allow read: if true;
-      allow write: if isSuperAdmin() || isAuthenticated();
+      allow read, write: if true;
     }
 
     // User Profiles
     match /users/{userId} {
-      allow read: if true;
-      allow write: if isAuthenticated() || isSuperAdmin();
+      allow read, write: if true;
     }
 
-    // Default catch-all
+    // Notice Board & Event Announcements
+    match /announcements/{announcementId} {
+      allow read, write: if true;
+    }
+
+    // Default test / diagnostics
+    match /test/{docId} {
+      allow read, write: if true;
+    }
+
+    // Catch-all
     match /{document=**} {
-      allow read, write: if isSuperAdmin();
+      allow read, write: if true;
     }
   }
 }
